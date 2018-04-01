@@ -1,7 +1,6 @@
 package nz.timo.websocket.binary;
 
 import java.nio.ByteBuffer;
-import java.util.function.Consumer;
 
 public class BinaryConnection implements BinaryReader, BinaryWriter {
 
@@ -14,12 +13,17 @@ public class BinaryConnection implements BinaryReader, BinaryWriter {
     }
 
     @Override
-    public void setOnReceived(BinaryDataReceivedHandler callback) {
+    public void setOnReceived(BinaryReaderListener callback) {
         reader.setOnReceived(callback);
     }
 
     @Override
     public void sendData(ByteBuffer toSend) {
         writer.sendData(toSend);
+    }
+
+    @Override
+    public void disconnect() {
+        writer.disconnect();
     }
 }

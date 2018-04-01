@@ -1,69 +1,95 @@
 package nz.timo.websocket.binary;
 
-import nz.timo.websocket.Pollable;
-import nz.timo.websocket.PollableRegistrar;
-import nz.timo.websocket.PollAgainPriority;
-import nz.timo.websocket.WebSocketConnectionException;
+import nz.timo.websocket.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
 
 /**
  * A BinaryWriter based on an NIO channel.
  */
-public class NIOBinaryWriter implements BinaryWriter, Pollable {
+public class NIOBinaryWriter implements BinaryWriter, Schedulable {
     private Queue<ByteBuffer> toWrite = new LinkedList<>();
     private final WritableByteChannel channel;
-    private final PollableRegistrar registrar;
 
-    public NIOBinaryWriter(PollableRegistrar registrar, WritableByteChannel channel) {
-        if(registrar == null) {
-            throw new IllegalArgumentException("registrar cannot be null!");
-        }
-        if(channel == null) {
-            throw new IllegalArgumentException("channel cannot be null!");
-        }
+    private enum State {
+        OPEN,
+        CLOSING,
+        CLOSED
+    }
 
-        registrar.register(this);
-        this.registrar = registrar;
+    private State state = State.OPEN;
+
+    public NIOBinaryWriter(WritableByteChannel channel, Scheduler scheduler) {
+        Objects.requireNonNull(channel);
+        Objects.requireNonNull(scheduler);
+
+        scheduler.scheduleRepeating(this);
         this.channel = channel;
     }
 
 
     @Override
     public void sendData(ByteBuffer toSend) {
+        if(state == State.CLOSING) {
+            throw new WebSocketConnectionException("Attempted to write data while connection is closing.");
+        } else if(state == State.CLOSED) {
+            throw new WebSocketConnectionException("Attempted to write data while connection is closed.");
+        }
+
         toWrite.offer(toSend);
     }
 
     @Override
-    public PollAgainPriority poll() {
+    public void disconnect() {
+        state = State.CLOSING;
+    }
+
+    @Override
+    public void invoke(ScheduledTaskContext ctx) {
         ByteBuffer next = toWrite.peek();
+
+        if(!channel.isOpen()) {
+            ctx.setShouldRepeat(false);
+            System.err.println("Channel closed unexpectedly");
+            return;
+        }
+
         if(next == null) {
-            return PollAgainPriority.LOWEST;
+            if(state == State.CLOSING) {
+                tryCloseConnection();
+                ctx.setShouldRepeat(false);
+            }
+
+            return;
         }
 
         try {
             channel.write(next);
         } catch(IOException e) {
-            throw new WebSocketConnectionException("Error during sending binary data", e);
+            state = State.CLOSED;
+            ctx.setShouldRepeat(false);
+            return;
         }
 
-        if(next.hasRemaining()) {
-            return PollAgainPriority.HIGHEST;
-        } else {
+
+        if(!next.hasRemaining()) {
             toWrite.remove();
-
-            if(toWrite.isEmpty()) {
-                // No work to do here
-                return PollAgainPriority.LOW;
-            } else {
-                return PollAgainPriority.NORMAL;
-            }
         }
+    }
 
+    private void tryCloseConnection() {
+        try {
+            channel.close();
+        } catch(IOException e) {
+            throw new WebSocketConnectionException("Error while closing connection", e);
+        } finally {
+            state = State.CLOSED;
+        }
     }
 }

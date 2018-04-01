@@ -5,4 +5,6 @@ import java.util.function.Consumer;
 
 public interface BinaryWriter {
     void sendData(ByteBuffer toSend);
+
+    void disconnect();
 }
