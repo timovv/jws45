@@ -3,7 +3,7 @@ package nz.timo.websocket;
 import java.util.PriorityQueue;
 
 /**
- * A polling scheduler.
+ * A polling scheduler that minimises lateness.
  */
 public class PollableScheduler implements Scheduler {
 

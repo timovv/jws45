@@ -83,7 +83,6 @@ public class HTTPWebSocketBinaryConnection implements BinaryReader, BinaryWriter
     public void disconnect() {
         parentWriter.disconnect();
     }
-
     @Override
     public void onReceived(ByteBuffer data) {
         if(state == State.CONNECTING) {
@@ -101,6 +100,13 @@ public class HTTPWebSocketBinaryConnection implements BinaryReader, BinaryWriter
 
         if(state == State.CONNECTED && onReceivedCallback != null) {
             onReceivedCallback.onReceived(data);
+        }
+    }
+
+    @Override
+    public void onDisconnected() {
+        if(onReceivedCallback != null) {
+            onReceivedCallback.onDisconnected();
         }
     }
 }

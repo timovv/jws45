@@ -10,6 +10,7 @@ import nz.timo.websocket.frame.FrameWriter;
 import nz.timo.websocket.frame.WebSocketFrameWriter;
 import nz.timo.websocket.http.HTTPWebSocketBinaryConnection;
 import nz.timo.websocket.message.*;
+import nz.timo.websocket.ssl.SSLEngineBinaryConnection;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -38,6 +39,7 @@ public abstract class WebSocketClient implements WebSocketMessageHandler {
     }
 
     public WebSocketClient(URI endpoint) {
+        boolean secure = endpoint.getScheme().equals("wss");
         int port = getPort(endpoint);
         SocketAddress address = new InetSocketAddress(endpoint.getHost(), port);
         SocketChannel channel;
@@ -51,6 +53,12 @@ public abstract class WebSocketClient implements WebSocketMessageHandler {
         PollableScheduler scheduler = new PollableScheduler();
         BinaryReader reader = new NIOBinaryReader(channel, scheduler, BUFFER_SIZE);
         BinaryWriter writer = new NIOBinaryWriter(channel, scheduler);
+
+        if(secure) {
+            SSLEngineBinaryConnection connection = new SSLEngineBinaryConnection(reader, writer, scheduler, endpoint.getHost(), port);
+            reader = connection;
+            writer = connection;
+        }
 
         HTTPWebSocketBinaryConnection httpLayer = new HTTPWebSocketBinaryConnection(reader, writer);
         httpLayer.connect(endpoint, Collections.emptyMap());
