@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>nz.timo</groupId>
-  <artifactId>discord</artifactId>
+  <artifactId>jws45</artifactId>
   <version>1.0-SNAPSHOT</version>
   <build>
     <plugins>
@@ -19,7 +19,7 @@
   </build>
   <packaging>jar</packaging>
 
-  <name>discord</name>
+  <name>jws45</name>
   <url>http://maven.apache.org</url>
 
   <properties>
