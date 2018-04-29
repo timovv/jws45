@@ -28,7 +28,7 @@ public class WebSocketIncomingConnection implements IncomingConnection, FrameRec
 
     @Override
     public void onFrameReceived(Frame frame) {
-        if (!frames.isEmpty() && frames.getFirst().getOpcode() != frame.getOpcode()) {
+        if (!frames.isEmpty() && frame.getOpcode() != Opcode.CONTINUATION) {
             // unexpected frame type
             System.err.println("Unexpected frame type received, ignoring it");
             return;
